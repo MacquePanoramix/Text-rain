@@ -82,17 +82,7 @@ class TextDrop {
   void reset() {
     y = random(-500, -50);
     // Pick a new content based on the mode
-    switch (mode) {
-      case 0: // Sentence Mode
-        content = trim(sentences[int(random(sentences.length))]) + ".";
-        break;
-      case 1: // Word Mode
-        content = words[int(random(words.length))];
-        break;
-      case 2: // Letter Mode
-        content = str(letters[int(random(letters.length))]);
-        break;
-    }
+    content = getRandomContent();
     // Randomize text size
     textSize = random(12, 24);
     textFont(font, textSize);
@@ -144,3 +134,4 @@ class TextDrop {
     }
   }
 }
+
