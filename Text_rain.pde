@@ -6,6 +6,9 @@ char[] letters;     // Letters from the text
 PFont font;
 int mode = 0;       // 0: Sentence, 1: Word, 2: Letter
 boolean collisionEnabled = false; // Collision detection toggle
+int numDrops;       // Number of text instances
+int maxDrops = 200; // Maximum number of drops allowed
+int minDrops = 1;  // Minimum number of drops allowed
 
 void setup() {
   size(600, 400);
@@ -26,6 +29,8 @@ void setup() {
   words = splitTokens(text, " \n\r\t");
   letters = text.toCharArray();
   
+  // Set initial number of drops based on mode
+  setNumDropsByMode();
   initializeDrops();
 }
 
@@ -47,23 +52,47 @@ void draw() {
     drop.display();
   }
   
-  // Display current mode and collision status
+  // Display current mode, collision status, and number of drops
   displayStatus();
 }
 
 void mousePressed() {
   if (mouseButton == LEFT) {
     mode = (mode + 1) % 3; // Cycle through modes 0, 1, 2
+    setNumDropsByMode();
     initializeDrops();
   } else if (mouseButton == RIGHT) {
     collisionEnabled = !collisionEnabled; // Toggle collision detection
   }
 }
 
-void initializeDrops() {
-  drops.clear();
+void mouseWheel(MouseEvent event) {
+  float e = event.getCount();
+  adjustNumDrops((int)e);
+}
+
+void adjustNumDrops(int change) {
+  numDrops -= change; // Change by 5 drops per scroll notch
+  numDrops = constrain(numDrops, minDrops, maxDrops);
   
-  int numDrops;
+  // Adjust the drops list
+  if (drops.size() < numDrops) {
+    // Add new drops
+    int dropsToAdd = numDrops - drops.size();
+    for (int i = 0; i < dropsToAdd; i++) {
+      String content = getRandomContent();
+      drops.add(new TextDrop(content));
+    }
+  } else if (drops.size() > numDrops) {
+    // Remove excess drops
+    int dropsToRemove = drops.size() - numDrops;
+    for (int i = 0; i < dropsToRemove; i++) {
+      drops.remove(drops.size() - 1); // Remove from the end
+    }
+  }
+}
+
+void setNumDropsByMode() {
   switch (mode) {
     case 0:
       numDrops = 20; // Fewer drops for sentences
@@ -77,22 +106,31 @@ void initializeDrops() {
     default:
       numDrops = 50;
   }
-  
+  numDrops = constrain(numDrops, minDrops, maxDrops);
+}
+
+void initializeDrops() {
+  drops.clear();
   for (int i = 0; i < numDrops; i++) {
-    String content = "";
-    switch (mode) {
-      case 0: // Sentence Mode
-        content = trim(sentences[int(random(sentences.length))]) + ".";
-        break;
-      case 1: // Word Mode
-        content = words[int(random(words.length))];
-        break;
-      case 2: // Letter Mode
-        content = str(letters[int(random(letters.length))]);
-        break;
-    }
+    String content = getRandomContent();
     drops.add(new TextDrop(content));
   }
+}
+
+String getRandomContent() {
+  String content = "";
+  switch (mode) {
+    case 0: // Sentence Mode
+      content = trim(sentences[int(random(sentences.length))]) + ".";
+      break;
+    case 1: // Word Mode
+      content = words[int(random(words.length))];
+      break;
+    case 2: // Letter Mode
+      content = str(letters[int(random(letters.length))]);
+      break;
+  }
+  return content;
 }
 
 void handleCollisions() {
@@ -124,5 +162,6 @@ void displayStatus() {
       break;
   }
   String collisionText = collisionEnabled ? "Collision: ON" : "Collision: OFF";
-  text(modeText + " | " + collisionText, width / 2, 20);
+  text(modeText + " | " + collisionText + " | Drops: " + numDrops, width / 2, 20);
 }
+
