@@ -1,132 +1,143 @@
-ArrayList<TextDrop> drops = new ArrayList<TextDrop>();
-String[] lines;
-String[] sentences; // Sentences from the text
-String[] words;     // Words from the text
-char[] letters;     // Letters from the text
-PFont font;
-int mode = 0;       // 0: Sentence, 1: Word, 2: Letter
-boolean collisionEnabled = false; // Collision detection toggle
-int numDrops;       // Number of text instances
-int maxDrops = 200; // Maximum number of drops allowed
-int minDrops = 1;  // Minimum number of drops allowed
+//Main Page
+
+ArrayList<TextDrop> drops = new ArrayList<TextDrop>(); 
+// this is where we store all the text drops (like sentences, words, or letters)
+
+// variables for handling text and its diff modes
+String[] lines; // full lines from the file
+String[] sentences; // chopped up sentences
+String[] words;     // all the individual words
+char[] letters;     // all the lil letters
+PFont font;         // font for the text
+int mode = 0;       // 0 = sentences, 1 = words, 2 = letters
+boolean collisionEnabled = false; // toggle to turn collision on/off
+int numDrops;       // how many text drops we got rn
+int maxDrops = 200; // cap the max drops allowed
+int minDrops = 1;   // and the minimum too, no 0 drops!
 
 void setup() {
-  size(600, 400);
-  background(0);
+  size(600, 400);  // setting up the canvas size
+  background(0);   // black background, clean slate
   
-  // Load a custom font (optional)
+  // loading the font, default one or custom if u got it
   font = createFont("Arial", 16);
   textFont(font);
   
-  // Load the text from the local file
-  lines = loadStrings("text.txt");
+  // grab the text from the file and process it
+  lines = loadStrings("text.txt"); // load each line
+  String text = join(lines, " ");  // merge all lines into one
   
-  // Combine all lines into a single string
-  String text = join(lines, " ");
+  // breaking text into smaller bits
+  sentences = splitTokens(text, ".!?"); // split by punctuation
+  words = splitTokens(text, " \n\r\t"); // split by spaces n stuff
+  letters = text.toCharArray();        // break into single letters
   
-  // Parse the text into sentences, words, and letters
-  sentences = splitTokens(text, ".!?");
-  words = splitTokens(text, " \n\r\t");
-  letters = text.toCharArray();
-  
-  // Set initial number of drops based on mode
+  // decide starting drop count based on mode
   setNumDropsByMode();
-  initializeDrops();
+  initializeDrops(); // fill up the drops list
 }
 
 void draw() {
-  // Create a fading trail effect
-  fill(0, 50);
+  // adding a lil trail fade effect
+  fill(0, 50); 
   rect(0, 0, width, height);
   
+  // update every drop, let em fall
   for (TextDrop drop : drops) {
     drop.update();
   }
   
-  // Handle collisions if enabled
+  // handle collisions if that’s turned on
   if (collisionEnabled) {
     handleCollisions();
   }
   
+  // show all the drops on the screen
   for (TextDrop drop : drops) {
     drop.display();
   }
   
-  // Display current mode, collision status, and number of drops
+  // display info about the current mode, collisions, and drop count
   displayStatus();
 }
 
 void mousePressed() {
   if (mouseButton == LEFT) {
-    mode = (mode + 1) % 3; // Cycle through modes 0, 1, 2
-    setNumDropsByMode();
-    initializeDrops();
+    // switch between modes (sentence -> word -> letter)
+    mode = (mode + 1) % 3; 
+    setNumDropsByMode(); // update drop count for new mode
+    initializeDrops();   // reset the drops
   } else if (mouseButton == RIGHT) {
-    collisionEnabled = !collisionEnabled; // Toggle collision detection
+    // toggle collision on or off
+    collisionEnabled = !collisionEnabled; 
   }
 }
 
 void mouseWheel(MouseEvent event) {
+  // adjust the number of drops using mouse scroll
   float e = event.getCount();
   adjustNumDrops((int)e);
 }
 
 void adjustNumDrops(int change) {
-  numDrops -= change; // Change by 5 drops per scroll notch
+  // tweak the drop count, but stay in the limits
+  numDrops -= change;
   numDrops = constrain(numDrops, minDrops, maxDrops);
   
-  // Adjust the drops list
+  // if drops are less, add new ones
   if (drops.size() < numDrops) {
-    // Add new drops
     int dropsToAdd = numDrops - drops.size();
     for (int i = 0; i < dropsToAdd; i++) {
-      String content = getRandomContent();
+      String content = getRandomContent(); // get a random text bit
       drops.add(new TextDrop(content));
     }
   } else if (drops.size() > numDrops) {
-    // Remove excess drops
+    // too many? remove some extras from the end
     int dropsToRemove = drops.size() - numDrops;
     for (int i = 0; i < dropsToRemove; i++) {
-      drops.remove(drops.size() - 1); // Remove from the end
+      drops.remove(drops.size() - 1);
     }
   }
 }
 
 void setNumDropsByMode() {
+  // set the default drop count based on the mode
   switch (mode) {
     case 0:
-      numDrops = 20; // Fewer drops for sentences
+      numDrops = 20; // fewer for sentences
       break;
     case 1:
-      numDrops = 50;
+      numDrops = 50; // medium for words
       break;
     case 2:
-      numDrops = 100; // More drops for letters
+      numDrops = 100; // more for letters, they small
       break;
     default:
-      numDrops = 50;
+      numDrops = 50; // fallback in case something goes wrong
   }
-  numDrops = constrain(numDrops, minDrops, maxDrops);
+  numDrops = constrain(numDrops, minDrops, maxDrops); // just in case
 }
 
 void initializeDrops() {
+  // clear the old drops and fill with new ones
   drops.clear();
   for (int i = 0; i < numDrops; i++) {
-    String content = getRandomContent();
+    String content = getRandomContent(); // randomize text
     drops.add(new TextDrop(content));
   }
 }
 
 String getRandomContent() {
+  // grab a random sentence, word, or letter based on mode
   String content = "";
   switch (mode) {
-    case 0: // Sentence Mode
+    case 0: // sentence mode
       content = trim(sentences[int(random(sentences.length))]) + ".";
       break;
-    case 1: // Word Mode
+    case 1: // word mode
       content = words[int(random(words.length))];
       break;
-    case 2: // Letter Mode
+    case 2: // letter mode
       content = str(letters[int(random(letters.length))]);
       break;
   }
@@ -134,18 +145,20 @@ String getRandomContent() {
 }
 
 void handleCollisions() {
+  // check every drop against each other for collisions
   for (int i = 0; i < drops.size(); i++) {
     TextDrop dropA = drops.get(i);
     for (int j = i + 1; j < drops.size(); j++) {
       TextDrop dropB = drops.get(j);
       if (dropA.checkCollision(dropB)) {
-        dropA.resolveCollision(dropB);
+        dropA.resolveCollision(dropB); // fix it if they bump
       }
     }
   }
 }
 
 void displayStatus() {
+  // show info like mode, collision state, and drop count
   fill(255);
   textSize(16);
   textAlign(CENTER);
@@ -164,4 +177,3 @@ void displayStatus() {
   String collisionText = collisionEnabled ? "Collision: ON" : "Collision: OFF";
   text(modeText + " | " + collisionText + " | Drops: " + numDrops, width / 2, 20);
 }
-
