@@ -16,7 +16,7 @@ int maxDrops = 200; // cap the max drops allowed
 int minDrops = 1;   // and the minimum too, no 0 drops!
 
 void setup() {
-  size(600, 400);  // setting up the canvas size
+  size(1600, 900);  // setting up the canvas size
   background(0);   // black background, clean slate
   
   // loading the font, default one or custom if u got it
