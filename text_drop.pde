@@ -29,34 +29,14 @@ class TextDrop {
     
     // |Content properties| 
     
-    content = c; // Check main tab for more info on how content is randomized (Also basically defining what is the content of the text)
+    content = c; // Text content
+    textFont(font, textSize);
     contentWidth = textWidth(content);
-    contentHeight = textAscent() + textDescent();  // Basically (Text_top - Text_baseline) + (Text_baseline - Text Bottom)
+    contentHeight = textAscent() + textDescent(); // Text height calculation
     
     // |Randomize all properties|
     
-      // |Text properties|
-      
-      textSize = random(16, 26);
-      textFont(font, textSize); 
-    
-      // |Position properties|
-    
-      x = random(width - contentWidth); // Assure entire text starts within the screen
-      y = random(-500, -50); // Spawn on top of the screen to simulate small random delay in appearance
-      speedY = random(1, 3);  // Fall speed
-      speedX = random(-1, 1); // Wind effect
-    
-      // |Spin properties|
-    
-      spin = random(1) < 0.2; // 20% chance to spin
-      angle = 0;
-      rotationSpeed = random(-0.02, 0.02);
-    
-      // |Color properties|
-      
-      currentColor = color(0, 255, 0); // Initial color is green
-      colorChangeTimer = 0;
+    reset();
     
   }
   
@@ -82,10 +62,10 @@ class TextDrop {
     }
     
     // |Color change chance update (color lootbox)|
-
+    
     if (colorChangeTimer == 0 && random(1) < 0.01) { // 1% chance each frame
       currentColor = color(random(255), random(255), random(255));
-      colorChangeTimer = int(random(10, 30)); // Color change lasts for 10-30 frames at random
+      colorChangeTimer = int(random(10, 30)); // Color change lasts for 10-30 frames
     } else if (colorChangeTimer > 0) {
       colorChangeTimer--;
       if (colorChangeTimer == 0) {
@@ -132,34 +112,34 @@ class TextDrop {
   
   void reset() { // Check constructor code for further comment explanations
     
-    // |Position properties|
-    
-    y = random(-500, -50); 
-    x = random(width - contentWidth);
-    speedY = random(1, 3);
-    speedX = random(-1, 1);
-    
-    // |Content properties|
-    
-    content = getRandomContent();  // Each spawn, a new random content is selected from the total text
-    contentWidth = textWidth(content);
-    contentHeight = textAscent() + textDescent(); 
-    
     // |Text properties|
     
     textSize = random(16, 26);
     textFont(font, textSize);
     
+    // |Position properties|
+    
+    y = random(-500, -50); 
+    x = random(width - contentWidth); // Ensure text starts within the screen
+    speedY = random(1, 3);  // Fall speed
+    speedX = random(-1, 1); // Wind effect
+    
     // |Spin properties|
-   
-    spin = random(1) < 0.2; // Again 20% chance to respawn spinning
+    
+    spin = random(1) < 0.2; // 20% chance to spin
     angle = 0;
     rotationSpeed = random(-0.02, 0.02);
     
     // |Color properties|
     
-    currentColor = color(0, 255, 0); // Also respawns green
+    currentColor = color(0, 255, 0); // Initial color is green
     colorChangeTimer = 0;
+    
+    // |Content properties|
+    
+    content = getRandomContent(); // New random content
+    contentWidth = textWidth(content);
+    contentHeight = textAscent() + textDescent();
     
   }
   
@@ -181,32 +161,32 @@ class TextDrop {
     
     // |Overlap check|
     
-    return !(thisRight < otherLeft || thisLeft > otherRight || thisBottom < otherTop || thisTop > otherBottom); // Basically checking if part of a collision box is inside another one (Not perfectly functional for rotating texts, but in general works well without being overly complex)
+    return !(thisRight < otherLeft || thisLeft > otherRight || thisBottom < otherTop || thisTop > otherBottom);
     
   }
   
   void resolveCollision(TextDrop other) { 
     
-    // |Simple collision calculation: just exchanging speeds|    (The technical physics term would actually be velocities but I think speed suffices for the understanding given the variable names I had already landed upon)
+    // |Simple collision calculation: just exchanging speeds|
     
-      // |Temporary speeds|
-      
-      float tempSpeedX = speedX;
-      float tempSpeedY = speedY;
-      
-      // |Gain other text speed|
+    // |Temporary speeds|
     
-      speedX = other.speedX;
-      speedY = other.speedY;
+    float tempSpeedX = speedX;
+    float tempSpeedY = speedY;
     
-      // |Give this previous text speed|
-      
-      other.speedX = tempSpeedX;
-      other.speedY = tempSpeedY;
+    // |Gain other text speed|
+    
+    speedX = other.speedX;
+    speedY = other.speedY;
+    
+    // |Give this previous text speed|
+    
+    other.speedX = tempSpeedX;
+    other.speedY = tempSpeedY;
     
     // |Anti-sticking measure|
     
-    while (checkCollision(other)) { // Basically whenever the texts collide push them away from each other until they are completely away before resuming program so they don't get stuck inside each other
+    while (checkCollision(other)) {
       x += speedX;
       y += speedY;
       other.x += other.speedX;
