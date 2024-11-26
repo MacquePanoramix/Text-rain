@@ -1,143 +1,286 @@
-//Main Page
+// |TextDrop instances|
 
 ArrayList<TextDrop> drops = new ArrayList<TextDrop>(); 
-// this is where we store all the text drops (like sentences, words, or letters)
 
-// variables for handling text and its diff modes
-String[] lines; // full lines from the file
-String[] sentences; // chopped up sentences
-String[] words;     // all the individual words
-char[] letters;     // all the lil letters
-PFont font;         // font for the text
-int mode = 0;       // 0 = sentences, 1 = words, 2 = letters
-boolean collisionEnabled = false; // toggle to turn collision on/off
-int numDrops;       // how many text drops we got rn
-int maxDrops = 200; // cap the max drops allowed
-int minDrops = 1;   // and the minimum too, no 0 drops!
+// |Explosion instances|
+
+ArrayList<Explosion> explosions = new ArrayList<Explosion>(); 
+
+// |Text content arrays|
+
+String[] lines;      // Lines from the text file
+String[] sentences;  // Sentences from the text
+String[] words;      // Words from the text
+char[] letters;      // Letters from the text
+
+// |Font properties|
+
+PFont font;
+
+// |Mode and settings|
+
+int mode = 0;                   // 0: Sentence, 1: Word, 2: Letter
+boolean collisionEnabled = false; // Collision detection toggle
+boolean explosionEnabled = false; // Explosion effect toggle
+int numDrops;                    // Current number of text drops
+int maxDrops = 200;              // Maximum number of drops
+int minDrops = 1;                // Minimum number of drops
+
+// |Explosion animation variables|
+
+PImage[] explosionSheets = new PImage[5];                // Explosion sprite sheets
+int[] numExplosionFrames = {64, 64, 64, 64, 12};         // Frames in each explosion animation
+boolean[] isGrid = {true, true, true, true, false};      // Sprite sheet formats (grid or not). Basically if it's a 8x8 square or a 12x1 row
+int explosionType = 0;                                   // Current explosion type (0-5)
+
+// |Frames to preload|
+
+ArrayList<PImage[]> explosionFrames = new ArrayList<PImage[]>();
+
+// |State variable|
+
+int state = 0; // 0: Title Screen, 1: Text Drop Mode
+
+// |Title text instance|
+
+TextTitle titleText;
 
 void setup() {
-  size(1600, 900);  // setting up the canvas size
-  background(0);   // black background, clean slate
-  
-  // loading the font, default one or custom if u got it
+
+  // |Window setup|
+
+  size(1600, 900, P2D); // Using P2D to improve screen rendering performance of the explosions (Before it was lagging too much with the explosions with more frames)
+  background(0);
+
+  // |Font setup|
+
   font = createFont("Arial", 16);
   textFont(font);
-  
-  // grab the text from the file and process it
-  lines = loadStrings("text.txt"); // load each line
-  String text = join(lines, " ");  // merge all lines into one
-  
-  // breaking text into smaller bits
-  sentences = splitTokens(text, ".!?"); // split by punctuation
-  words = splitTokens(text, " \n\r\t"); // split by spaces n stuff
-  letters = text.toCharArray();        // break into single letters
-  
-  // decide starting drop count based on mode
+
+  // |Load text content|
+
+  lines = loadStrings("text.txt");
+  String text = join(lines, " ");
+  String fullText = text; // Entire text
+
+  // |Separate text into sentences, words, and letters|
+
+  sentences = splitTokens(text, ".!?");
+  words = splitTokens(text, " \n\r\t");
+  letters = text.toCharArray();
+
+  // |Load and preprocess explosion sprite sheets| Done to improve performance so that the explosion frames don't have to be processed each time
+
+  for (int i = 0; i < explosionSheets.length; i++) {
+
+    // |Load explosion sprite sheet|
+
+    explosionSheets[i] = loadImage("explosion " + (i+1) + ".png");
+
+    // |Extract frames from sprite sheet|
+
+    PImage[] frames = extractFrames(explosionSheets[i], numExplosionFrames[i], isGrid[i]);
+
+    // |Add frames to preloaded frames list|
+
+    explosionFrames.add(frames);
+  }
+
+  // |Initialize drops based on current mode|
+
   setNumDropsByMode();
-  initializeDrops(); // fill up the drops list
+  initializeDrops();
+
+  // |Initialize title text|
+
+  titleText = new TextTitle(fullText);
 }
 
 void draw() {
-  // adding a lil trail fade effect
-  fill(0, 50); 
+
+  // |Fading trail effect| A almost completely transparent black rectangle covering the screen
+
+  fill(0, 50);
   rect(0, 0, width, height);
-  
-  // update every drop, let em fall
-  for (TextDrop drop : drops) {
-    drop.update();
+
+  // |Title Screen mode|
+
+  if (state == 0) {
+    
+    // |Update and display title text|
+
+    titleText.update();
+    titleText.display();
+    
+  // |Text Drop Mode|
+
+  } else if (state == 1) {
+
+    // |Update all TextDrops|
+
+    for (TextDrop drop : drops) {
+      drop.update();
+    }
+
+    // |Collision handling|
+
+    if (collisionEnabled) {
+      handleCollisions();
+    }
+
+    // |Display all TextDrops| Done after Collision for more in sync display of the text drops.
+
+    for (TextDrop drop : drops) {
+      drop.display();
+    }
+
+    // |Update and display explosions|
+
+    for (int i = explosions.size() - 1; i >= 0; i--) {
+      Explosion explosion = explosions.get(i);
+      explosion.update();
+      explosion.display();
+
+      // |Remove explosion if animation finished|
+
+      if (explosion.isFinished()) {
+        explosions.remove(i);
+      }
+    }
+
+    // |Display current status|
+
+    displayStatus();
   }
-  
-  // handle collisions if that’s turned on
-  if (collisionEnabled) {
-    handleCollisions();
-  }
-  
-  // show all the drops on the screen
-  for (TextDrop drop : drops) {
-    drop.display();
-  }
-  
-  // display info about the current mode, collisions, and drop count
-  displayStatus();
 }
 
 void mousePressed() {
-  if (mouseButton == LEFT) {
-    // switch between modes (sentence -> word -> letter)
-    mode = (mode + 1) % 3; 
-    setNumDropsByMode(); // update drop count for new mode
-    initializeDrops();   // reset the drops
-  } else if (mouseButton == RIGHT) {
-    // toggle collision on or off
-    collisionEnabled = !collisionEnabled; 
+
+  // |Left mouse button: Cycle through modes|
+
+  if (mouseButton == LEFT && state == 1) {
+    mode = (mode + 1) % 3; // Cycle through modes 0, 1, 2 (Setences, Words and Letters)
+    setNumDropsByMode();
+    initializeDrops();
+
+  // |Right mouse button: Toggle collision detection|
+
+  } else if (mouseButton == RIGHT && state == 1) {
+    collisionEnabled = !collisionEnabled;
+  }
+}
+
+void keyPressed() {
+
+  // |Enter key: Toggle between title screen and text drop mode|
+
+  if (key == ENTER || key == RETURN) {
+    state = (state + 1) % 2; // Toggle between mode 0 and 1 (Tittle screen and Drop text)
+
+  } else if (state == 1) { // Only functional in text drop mode
+
+    // |Spacebar: Toggle explosion effect|
+
+    if (key == ' ') {
+      explosionEnabled = !explosionEnabled;
+
+    // |E key: Cycle through explosion types|
+
+    } else if (key == 'e' || key == 'E') {
+      explosionType = (explosionType + 1) % 6; // Cycle through different explosions (0-5)
+    }
   }
 }
 
 void mouseWheel(MouseEvent event) {
-  // adjust the number of drops using mouse scroll
+
+  // |Adjust number of drops with mouse wheel|
+
   float e = event.getCount();
   adjustNumDrops((int)e);
+  
 }
 
 void adjustNumDrops(int change) {
-  // tweak the drop count, but stay in the limits
+
+  // |Adjust the number of drops within the permited limits|
+
   numDrops -= change;
   numDrops = constrain(numDrops, minDrops, maxDrops);
-  
-  // if drops are less, add new ones
-  if (drops.size() < numDrops) {
+
+  // |Update drops list|
+
+  if (drops.size() < numDrops) { //If too few drops
+
+    // |Add new drops until enough|
+
     int dropsToAdd = numDrops - drops.size();
     for (int i = 0; i < dropsToAdd; i++) {
-      String content = getRandomContent(); // get a random text bit
+      String content = getRandomContent();
       drops.add(new TextDrop(content));
     }
-  } else if (drops.size() > numDrops) {
-    // too many? remove some extras from the end
+
+  } else if (drops.size() > numDrops) { //If too many drops
+
+    // |Remove excess drops until enough|
+
     int dropsToRemove = drops.size() - numDrops;
     for (int i = 0; i < dropsToRemove; i++) {
-      drops.remove(drops.size() - 1);
+      drops.remove(drops.size() - 1); // Remove the drops from the end of the list
     }
   }
 }
 
 void setNumDropsByMode() {
-  // set the default drop count based on the mode
+
+  // |Set number of drops based on current mode|
+
   switch (mode) {
     case 0:
-      numDrops = 20; // fewer for sentences
+      numDrops = 20; // Sentence Mode
       break;
     case 1:
-      numDrops = 50; // medium for words
+      numDrops = 50; // Word Mode
       break;
     case 2:
-      numDrops = 100; // more for letters, they small
+      numDrops = 100; // Letter Mode
       break;
     default:
-      numDrops = 50; // fallback in case something goes wrong
+      numDrops = 50;
   }
-  numDrops = constrain(numDrops, minDrops, maxDrops); // just in case
+
+  // |Make sure the number of drops is still within the limits| // Just for precaution
+
+  numDrops = constrain(numDrops, minDrops, maxDrops);
 }
 
 void initializeDrops() {
-  // clear the old drops and fill with new ones
+
+  // |Clear existing drops|
+
   drops.clear();
+
+  // |Create new drops|
+
   for (int i = 0; i < numDrops; i++) {
-    String content = getRandomContent(); // randomize text
+    String content = getRandomContent();
     drops.add(new TextDrop(content));
   }
 }
 
 String getRandomContent() {
-  // grab a random sentence, word, or letter based on mode
+
+  // |Retrieve random content from the text based on mode|
+
   String content = "";
   switch (mode) {
-    case 0: // sentence mode
+    case 0: // Sentence Mode
       content = trim(sentences[int(random(sentences.length))]) + ".";
       break;
-    case 1: // word mode
+    case 1: // Word Mode
       content = words[int(random(words.length))];
       break;
-    case 2: // letter mode
+    case 2: // Letter Mode
       content = str(letters[int(random(letters.length))]);
       break;
   }
@@ -145,23 +288,52 @@ String getRandomContent() {
 }
 
 void handleCollisions() {
-  // check every drop against each other for collisions
+
+  // |Loops to check for collision between each drop in relation to each other|
+
   for (int i = 0; i < drops.size(); i++) {
     TextDrop dropA = drops.get(i);
     for (int j = i + 1; j < drops.size(); j++) {
       TextDrop dropB = drops.get(j);
+
+      // |Check for collision between drops|
+
       if (dropA.checkCollision(dropB)) {
-        dropA.resolveCollision(dropB); // fix it if they bump
+
+        // |Add explosion effect if enabled|
+
+        if (explosionEnabled) {
+
+          // |Calculate collision point to be center of explosion|
+
+          float collisionX = (dropA.x + dropB.x) / 2;
+          float collisionY = (dropA.y + dropB.y) / 2;
+          int eType = explosionType;
+          if (explosionType == 5) { // Random explosion from all 5 different types available (Only in explosion mode 5/Random mode)
+            eType = int(random(5));
+          }
+
+          // |Create new explosion|
+
+          explosions.add(new Explosion(collisionX, collisionY, eType));
+        }
+
+        // |Resolve collision between drops|
+
+        dropA.resolveCollision(dropB);
       }
     }
   }
 }
 
 void displayStatus() {
-  // show info like mode, collision state, and drop count
+
+  // |Display current mode and settings|
+
   fill(255);
   textSize(16);
   textAlign(CENTER);
+
   String modeText = "";
   switch (mode) {
     case 0:
@@ -174,6 +346,64 @@ void displayStatus() {
       modeText = "Letter Mode";
       break;
   }
+
   String collisionText = collisionEnabled ? "Collision: ON" : "Collision: OFF";
-  text(modeText + " | " + collisionText + " | Drops: " + numDrops, width / 2, 20);
+  String explosionText = explosionEnabled ? "Explosion: ON" : "Explosion: OFF";
+  String explosionTypeText = "";
+
+  if (explosionEnabled) {
+    if (explosionType == 5) {
+      explosionTypeText = "Type: Random";
+    } else {
+      explosionTypeText = "Type: " + (explosionType + 1);
+    }
+  }
+
+  // |Render status text|
+
+  text(modeText + " | " + collisionText + " | " + explosionText + " " + explosionTypeText + " | Drops: " + numDrops, width / 2, 20);
+}
+
+// |Function to extract frames from sprite sheets|
+
+PImage[] extractFrames(PImage spriteSheet, int totalFrames, boolean gridFormat) {
+
+  // |Initialize frames array|
+
+  PImage[] frames = new PImage[totalFrames];
+
+  if (gridFormat) { 
+
+    // |Calculate grid properties| To be adjusted later on if I get animation sprite sheets in different grid formats
+
+    int columns = 8;
+    int rows = 8;
+    int frameWidth = spriteSheet.width / columns; // Divide all frames vertically
+    int frameHeight = spriteSheet.height / rows; // Divide all frames horizontally
+    int frameIndex = 0;
+
+    // |Extract frames from the grid|
+
+    for (int row = 0; row < rows; row++) {
+      for (int col = 0; col < columns; col++) {
+        if (frameIndex < totalFrames) {
+          frames[frameIndex] = spriteSheet.get(col * frameWidth, row * frameHeight, frameWidth, frameHeight); // Get pixels correpontdent to a indexed frame image
+          frameIndex++;
+        }
+      }
+    }
+
+  } else {
+
+    // |Extract frames from horizontal sprite sheet|
+
+    int frameWidth = spriteSheet.width / totalFrames;
+    int frameHeight = spriteSheet.height;
+
+    for (int i = 0; i < totalFrames; i++) {
+      frames[i] = spriteSheet.get(i * frameWidth, 0, frameWidth, frameHeight); // Get pixels correpontdent to a indexed frame image
+    }
+  }
+
+  return frames;
 }

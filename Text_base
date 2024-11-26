@@ -1,0 +1,18 @@
+// |TextBase class|
+
+abstract class TextBase {
+  
+  // |Content properties|
+  
+  String content;
+  
+  // |Text properties|
+  
+  color currentColor;
+
+  // |Basic text functions|
+
+  abstract void update();
+  abstract void display();
+  
+}
