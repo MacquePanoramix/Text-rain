@@ -1,0 +1,73 @@
+// |TextTitle class|
+
+class TextTitle extends TextBase {
+
+  // |Array for letters in the text|
+  
+  ArrayList<Letter> letters;
+
+  TextTitle(String content) {
+    
+    // |Text properties and transcribe text letters|
+    
+    this.content = content;
+    letters = new ArrayList<Letter>();
+    textFont(font, 16);
+
+    // |Initialize letters at appropriate positions|
+
+      // |Text initial position|
+  
+      float x = 10; 
+      float y = 30;
+      
+      // |Get distance value between spaces|
+      
+      float spaceWidth = textWidth(' ');
+  
+      // |Transcribe text into letters|
+  
+      for (int i = 0; i < content.length(); i++) {
+        char c = content.charAt(i);
+        
+        // |Incorporate line jumps|
+        
+        if (c == '\n') {
+          x = 10;
+          y += textAscent() + textDescent();
+          continue;
+        }
+        
+        // |Add letters to the array with the corresponding place they should be on screen| 
+        
+        float charWidth = textWidth(c);
+        if (x + charWidth > width - 10) {
+          x = 10;
+          y += textAscent() + textDescent();
+        }
+        Letter letter = new Letter(c, x, y);
+        letters.add(letter);
+        x += charWidth;
+      }
+  }
+
+  void update() {
+    
+    // |Update letter| Change for letter to change color at each frame
+    
+    for (Letter letter : letters) {
+      letter.update();
+    }
+  }
+
+  void display() {
+    
+    // |Display all letters on screen|
+    
+    textAlign(LEFT, TOP);
+    textFont(font, 16);
+    for (Letter letter : letters) {
+      letter.display();
+    }
+  }
+}
