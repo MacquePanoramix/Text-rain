@@ -1,0 +1,48 @@
+  // |Letter class|
+
+  class Letter {
+    
+    // |Letter properties|
+    
+    char c; // Which letter is it
+    float x, y; // Position
+    color col; // Color of the letter
+    int colorChangeTimer;
+
+    Letter(char c, float x, float y) {
+      
+      // |Initialize letter property values|
+      
+      this.c = c;
+      this.x = x;
+      this.y = y;
+      this.col = color(0, 255, 0); // Initial color is green
+      this.colorChangeTimer = 0; // Start timer at 0
+    }
+
+    void update() {
+      
+      // |Change color|
+      
+      if (colorChangeTimer == 0 && random(1) < 0.005) { // 0.5% chance per frame to change color
+        col = color(random(255), random(255), random(255)); // Change to any random color
+        colorChangeTimer = int(random(10, 30)); // Change lasts between 10-30 frames (Same as drop text)
+        
+        // |Count timer to revert change|
+        
+      } else if (colorChangeTimer > 0) {
+        colorChangeTimer--;
+        if (colorChangeTimer == 0) {
+          col = color(0, 255, 0); // Revert to green
+        }
+      }
+    }
+
+    void display() {
+      
+      // |Display letter on screen|
+      
+      fill(col);
+      text(c, x, y);
+    }
+  }
